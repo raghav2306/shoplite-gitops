@@ -1,0 +1,46 @@
+# Cluster-neutral manifests. Never applied on its own: overlays/eks builds on it,
+# and a future staging/production overlay would too.
+#
+# Left to the overlays:
+#   - image registry and tag (base uses placeholder names like shoplite/api-gateway)
+#   - StorageClass (base StatefulSets use the cluster's default class)
+#   - Ingress (ALB on EKS)
+#   - replica counts
+#
+# Secrets are NOT listed here. They are created by hand from the
+# */secret.yaml.example templates (see README.md), so real values never
+# reach Git.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ecommerce
+
+resources:
+  - namespace.yaml
+  # Data stores
+  - mongodb-users/service.yaml
+  - mongodb-users/statefulset.yaml
+  - mongodb-products/service.yaml
+  - mongodb-products/statefulset.yaml
+  - mongodb-orders/service.yaml
+  - mongodb-orders/statefulset.yaml
+  - rabbitmq/service.yaml
+  - rabbitmq/statefulset.yaml
+  # Backend services
+  - user-service/configmap.yaml
+  - user-service/deployment.yaml
+  - user-service/service.yaml
+  - product-service/configmap.yaml
+  - product-service/deployment.yaml
+  - product-service/service.yaml
+  - order-service/configmap.yaml
+  - order-service/deployment.yaml
+  - order-service/service.yaml
+  - api-gateway/configmap.yaml
+  - api-gateway/deployment.yaml
+  - api-gateway/service.yaml
+  # Frontends
+  - storefront/deployment.yaml
+  - storefront/service.yaml
+  - admin/deployment.yaml
+  - admin/service.yaml

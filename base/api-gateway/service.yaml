@@ -1,0 +1,14 @@
+# Exposed at /api by each overlay's ingress.yaml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: ecommerce
+spec:
+  type: ClusterIP
+  selector:
+    app: api-gateway
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

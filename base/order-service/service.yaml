@@ -1,0 +1,14 @@
+# api-gateway connects to order-service:50053 (ORDER_SERVICE_URL)
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: ecommerce
+spec:
+  type: ClusterIP
+  selector:
+    app: order-service
+  ports:
+    - name: grpc
+      port: 50053
+      targetPort: grpc

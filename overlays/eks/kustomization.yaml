@@ -1,0 +1,55 @@
+# EKS environment: base + EBS storage + ALB ingress + ECR images.
+# Argo CD syncs this folder (Application "shoplite-eks", created by shoplite-infra).
+#   Preview:  kubectl kustomize overlays/eks
+# Needs the aws-ebs-csi-driver add-on and the AWS Load Balancer Controller,
+# both installed by shoplite-infra.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - storageclass.yaml # gp3 EBS class "ebs-gp3" (cluster-scoped)
+  - ingress.yaml # internet-facing ALB
+
+# Managed by CI in shoplite-microservices: on every push to main it pushes the
+# images to ECR and rewrites newName/newTag here (kustomize edit set image) with
+# its registry and the commit SHA. Don't edit by hand except to roll back
+# (git revert the "deploy: ..." commit).
+images:
+  - name: shoplite/api-gateway
+    newName: 573802369594.dkr.ecr.us-east-1.amazonaws.com/dev/api-gateway
+    newTag: v1
+  - name: shoplite/user-service
+    newName: 573802369594.dkr.ecr.us-east-1.amazonaws.com/dev/user-service
+    newTag: v1
+  - name: shoplite/product-service
+    newName: 573802369594.dkr.ecr.us-east-1.amazonaws.com/dev/product-service
+    newTag: v1
+  - name: shoplite/order-service
+    newName: 573802369594.dkr.ecr.us-east-1.amazonaws.com/dev/order-service
+    newTag: v1
+  - name: shoplite/storefront
+    newName: 573802369594.dkr.ecr.us-east-1.amazonaws.com/dev/storefront
+    newTag: v1
+  - name: shoplite/admin
+    newName: 573802369594.dkr.ecr.us-east-1.amazonaws.com/dev/admin
+    newTag: v1
+
+patches:
+  # EKS 1.30+ has no default StorageClass, so every StatefulSet names ebs-gp3
+  # explicitly. No name filter: a new StatefulSet gets it automatically.
+  - target:
+      kind: StatefulSet
+    patch: |-
+      - op: add
+        path: /spec/volumeClaimTemplates/0/spec/storageClassName
+        value: ebs-gp3
+  # The gateway serves /health, not the Ingress-wide /healthz default
+  - target:
+      kind: Service
+      name: api-gateway
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          alb.ingress.kubernetes.io/healthcheck-path: /health

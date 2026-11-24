@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: ecommerce
+data:
+  GRPC_PORT: "50053"
+  # Places and cancels orders by reserving/releasing stock in product-service
+  PRODUCT_SERVICE_URL: product-service:50052

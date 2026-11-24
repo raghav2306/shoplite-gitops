@@ -1,0 +1,3 @@
+# Real secret values never go in Git: copy the .example templates locally
+**/secret.yaml
+.DS_Store

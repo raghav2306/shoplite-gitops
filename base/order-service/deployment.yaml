@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: ecommerce
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0 # keep full capacity during rollouts
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          # Placeholder name: the overlay sets the real registry and tag (kustomization.yaml "images:")
+          image: shoplite/order-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50053
+          envFrom:
+            - configMapRef:
+                name: order-service-config
+          env:
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-orders-secret
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-orders-secret
+                  key: MONGO_INITDB_ROOT_PASSWORD
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: RABBITMQ_DEFAULT_USER
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: RABBITMQ_DEFAULT_PASS
+            # $(VAR) is expanded by Kubernetes from the vars defined above
+            - name: MONGO_URI
+              value: mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb-orders-0.mongodb-orders:27017/orders?authSource=admin
+            # Publishes order events (order_events exchange). Soft dependency:
+            # orders work without it, and nothing consumes the events yet
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          startupProbe:
+            grpc:
+              port: 50053
+              service: liveness
+            periodSeconds: 5
+            failureThreshold: 24 # up to 2 min to connect to Mongo on boot
+          livenessProbe:
+            grpc:
+              port: 50053
+              service: liveness
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            grpc:
+              port: 50053 # "" service = hard dependencies (Mongo) up
+            periodSeconds: 5
+            failureThreshold: 2
